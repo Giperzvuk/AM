@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Audio Transcription</title>
+<style>
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+#drop-area {
+  border: 2px dashed #555;
+  border-radius: 5px;
+  width: 80%;
+  padding: 40px;
+  text-align: center;
+  margin-top: 40px;
+}
+.progress {
+  width: 80%;
+  background-color: #333;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+.progress-bar {
+  height: 20px;
+  background-color: #66bb6a;
+  width: 0%;
+}
+#result {
+  white-space: pre-wrap;
+  margin-top: 20px;
+  width: 80%;
+}
+button {
+  background-color: #444;
+  color: #eee;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+  <h1>Audio Transcription with Diarization</h1>
+  <div id="drop-area">
+    <p>Drag & drop an audio file here or click to select.</p>
+    <input type="file" id="fileElem" accept="audio/*" style="display:none" />
+    <button id="fileSelect">Select File</button>
+  </div>
+  <div class="progress" id="progress" style="display:none">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <pre id="result"></pre>
+  <button id="download" style="display:none">Download Text</button>
+<script>
+const dropArea = document.getElementById('drop-area');
+const fileElem = document.getElementById('fileElem');
+const fileSelect = document.getElementById('fileSelect');
+const progressBar = document.getElementById('progress-bar');
+const progress = document.getElementById('progress');
+const result = document.getElementById('result');
+const download = document.getElementById('download');
+
+fileSelect.addEventListener('click', () => fileElem.click());
+fileElem.addEventListener('change', handleFiles);
+dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('highlight');});
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('highlight'));
+dropArea.addEventListener('drop', (e) => { e.preventDefault(); handleFiles(e);});
+
+function handleFiles(e) {
+  const files = e.target.files || e.dataTransfer.files;
+  if (!files.length) return;
+  uploadFile(files[0]);
+}
+
+function uploadFile(file) {
+  const url = '/upload';
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', url, true);
+  xhr.upload.addEventListener('progress', e => {
+    progress.style.display = 'block';
+    const percent = (e.loaded / e.total) * 100;
+    progressBar.style.width = percent + '%';
+  });
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      progressBar.style.width = '100%';
+      const data = JSON.parse(xhr.responseText);
+      result.textContent = data.text;
+      download.style.display = 'inline-block';
+      const blob = new Blob([data.text], {type: 'text/plain'});
+      download.href = URL.createObjectURL(blob);
+      download.download = 'transcript.txt';
+    } else {
+      result.textContent = 'Error: ' + xhr.statusText;
+    }
+  };
+  xhr.send(formData);
+}
+</script>
+</body>
+</html>
